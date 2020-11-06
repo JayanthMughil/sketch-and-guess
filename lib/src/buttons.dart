@@ -1,35 +1,15 @@
 import 'package:flutter/material.dart';
-import 'create-room.dart';
 
 class HomeButton extends StatelessWidget {
   final String btnName;
-  final dynamic className;
+  final Function func;
 
-  const HomeButton(this.btnName, this.className);
-
-  Route _createRoute() {
-    return PageRouteBuilder(
-      pageBuilder: (context, animation, secondaryAnimation) => className,
-      transitionsBuilder: (context, animation, secondaryAnimation, child) {
-        var begin = Offset(1.0, 0.0);
-        var end = Offset.zero;
-        var tween = Tween(begin: begin, end: end);
-        var offsetAnimation = animation.drive(tween);
-
-        return SlideTransition(
-          position: offsetAnimation,
-          child: child,
-        );
-      },
-    );
-  }
+  const HomeButton(this.btnName, this.func);
 
   @override
   Widget build(BuildContext context) {
     return ElevatedButton(
-        onPressed: () {
-          Navigator.of(context).push(_createRoute());
-        },
+        onPressed: func,
         child: Text(btnName,
             style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
         style: ButtonStyle(
