@@ -28,10 +28,10 @@ class HomePage extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.center,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        new HomeButton("CREATE ROOM", (() {
+        HomeButton("CREATE ROOM", (() {
           Navigator.of(context).push(_createRoute(CreateRoom()));
         })),
-        new HomeButton("JOIN ROOM", (() {
+        HomeButton("JOIN ROOM", (() {
           Navigator.of(context).push(_createRoute(JoinRoom()));
         }))
       ],

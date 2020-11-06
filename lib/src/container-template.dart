@@ -24,7 +24,7 @@ class ContainerWidget extends StatelessWidget {
                       0.0, // Move to bottom 10 Vertically
                     ))
               ],
-              borderRadius: BorderRadius.circular(10)),
+              borderRadius: BorderRadius.circular(5)),
           child: Center(
             child: childWidget,
           ),
