@@ -74,6 +74,13 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "0.12.10-nullsafety.1"
+  menu_button:
+    dependency: "direct dev"
+    description:
+      name: menu_button
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "1.2.1"
   meta:
     dependency: transitive
     description:
