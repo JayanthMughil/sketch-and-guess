@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:menu_button/menu_button.dart';
+import 'color-picker.dart';
 
 class DrawArea extends StatefulWidget {
   const DrawArea({Key key}) : super(key: key);
@@ -13,6 +14,7 @@ class _DrawArea extends State<DrawArea> {
   List<Offset> _points = <Offset>[];
   List<double> brushSizes = [5.0, 10.0, 15.0, 20.0, 25.0];
   double brushSize = 10.0;
+  Color brushColor = Colors.black;
   List<CanvasPainter> brushList = [];
 
   void trackPath(DragUpdateDetails details) {
@@ -20,6 +22,15 @@ class _DrawArea extends State<DrawArea> {
       RenderBox box = context.findRenderObject();
       Offset localPosition = box.globalToLocal(details.globalPosition);
       _points = List.from(_points)..add(localPosition);
+    });
+  }
+
+  setColor(Color color) {
+    setState(() {
+      List<Offset> oldPoints = List.from(_points);
+      brushList.add(CanvasPainter(points: oldPoints, brushSize: brushSize, brushColor: brushColor));
+      brushColor = color;
+      _points.clear();
     });
   }
 
@@ -89,7 +100,7 @@ class _DrawArea extends State<DrawArea> {
                                 onItemSelected: (value) {
                                   setState(() {
                                     List<Offset> oldPoints = List.from(_points);
-                                    brushList.add(CanvasPainter(points: oldPoints, brushSize: brushSize));
+                                    brushList.add(CanvasPainter(points: oldPoints, brushSize: brushSize, brushColor: brushColor));
                                     brushSize = value;
                                     _points.clear();
                                   });
@@ -118,8 +129,16 @@ class _DrawArea extends State<DrawArea> {
                       icon: Icon(
                         Icons.color_lens,
                         size: 30,
+                        color: brushColor,
                       ),
-                      onPressed: null,
+                      onPressed: () {
+                        showDialog(
+                            context: context,
+                            builder: (_) {
+                              return ColorPicker(context, setColor);
+                            }
+                        );
+                      },
                     ),
                   ),
                   Expanded(
@@ -138,17 +157,29 @@ class _DrawArea extends State<DrawArea> {
           ),
           Expanded(child: LayoutBuilder(
             builder: (context, constraints) {
-              return Container(
-                width: constraints.widthConstraints().maxWidth,
-                height: constraints.heightConstraints().maxHeight,
-                child: GestureDetector(
-                    onPanUpdate: trackPath,
-                    onPanEnd: (DragEndDetails details) => _points.add(null),
+              return Scaffold(
+                body: Container(
+                  width: constraints.widthConstraints().maxWidth,
+                  height: constraints.heightConstraints().maxHeight,
+                  child: GestureDetector(
+                      onPanUpdate: trackPath,
+                      onPanEnd: (DragEndDetails details) => _points.add(null),
                       child: ClipRect(
                           child: CustomPaint(
-                        painter: CanvasPainter(points: _points, brushSize: brushSize, brushList: brushList),
+                            painter: CanvasPainter(points: _points, brushSize: brushSize,brushColor: brushColor, brushList: brushList),
+                          )
                       )
-                    )
+                  ),
+                ),
+                floatingActionButton: FloatingActionButton(
+                  onPressed: () {
+                    setState(() {
+                      _points.clear();
+                      brushList.clear();
+                    });
+                  },
+                  child: Icon(Icons.delete_sweep),
+                  backgroundColor: Colors.green,
                 ),
               );
             },
@@ -162,19 +193,20 @@ class _DrawArea extends State<DrawArea> {
 class CanvasPainter extends CustomPainter {
   List<Offset> points;
   double brushSize;
+  Color brushColor;
   List<CanvasPainter> brushList;
 
-  CanvasPainter({this.points, this.brushSize, this.brushList = const[]});
+  CanvasPainter({this.points, this.brushSize,this.brushColor, this.brushList = const[]});
 
   @override
   void paint(Canvas canvas, Size size) {
-    
+
     for (CanvasPainter painter in brushList) {
       painter.paint(canvas, size);
     }
 
     Paint brush = Paint()
-      ..color = Colors.black
+      ..color = brushColor
       ..strokeCap = StrokeCap.round
       ..strokeWidth = brushSize;
 
