@@ -31,9 +31,9 @@ class _TextArea extends State<TextArea> {
   Widget build(BuildContext context) {
     return
       Expanded(
+        flex: 1,
         child: Container(
           margin: EdgeInsets.all(10),
-          height: 230.0,
           decoration: BoxDecoration(
               color: Colors.white
           ),

@@ -7,7 +7,15 @@ class ContainerWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+        onTap: () {
+          FocusScopeNode currentFocus = FocusScope.of(context);
+          if (!currentFocus.hasPrimaryFocus) {
+            currentFocus.unfocus();
+          }
+        },
+        child: Container(
         color: Colors.blue,
         child: Container(
           margin: const EdgeInsets.only(
@@ -28,6 +36,6 @@ class ContainerWidget extends StatelessWidget {
           child: Center(
             child: childWidget,
           ),
-        ));
+        )));
   }
 }

@@ -22,7 +22,15 @@ class RoomCode extends StatelessWidget {
 
   RoomCode(this.code);
 
+  unFocusTextField (BuildContext context) {
+    FocusScopeNode currentFocus = FocusScope.of(context);
+    if (!currentFocus.hasPrimaryFocus) {
+      currentFocus.unfocus();
+    }
+  }
+
   copyCode(BuildContext context) {
+    unFocusTextField(context);
     Clipboard.setData(ClipboardData(text: code))
         .then((value) => Scaffold.of(context).showSnackBar(SnackBar(
               backgroundColor: Colors.blueAccent,

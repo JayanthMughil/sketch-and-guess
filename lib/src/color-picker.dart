@@ -18,8 +18,8 @@ class ColorPicker extends StatelessWidget {
             Navigator.pop(context);
           },
           child: Container(
-            height: 50,
-            width: 50,
+            height: 55,
+            width: 55,
             decoration: BoxDecoration(
                 color: color,
                 borderRadius: BorderRadius.circular(100),
@@ -49,6 +49,7 @@ class ColorPicker extends StatelessWidget {
         children: [
           Container(
             margin: EdgeInsets.all(10),
+            padding: EdgeInsets.only(left: 15),
             child: Wrap(
               spacing: 10,
               runSpacing: 10,
