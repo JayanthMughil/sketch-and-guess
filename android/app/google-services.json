@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "485260204330",
+    "project_id": "sketchandguess-ec896",
+    "storage_bucket": "sketchandguess-ec896.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:485260204330:android:91cb3b90959293a7396653",
+        "android_client_info": {
+          "package_name": "com.example.my_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "485260204330-thes78a5grecdrmlli58qafh00p1b0f3.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCkwmhfwWXIMVxT2gBNR5chBIDY748yYeQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "485260204330-thes78a5grecdrmlli58qafh00p1b0f3.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -24,6 +24,7 @@ class _TextArea extends State<TextArea> {
   sendMessage() {
     setState(() {
       messages.insert(0, msgcontroller.text);
+      msgcontroller.text = "";
     });
   }
 

@@ -13,7 +13,9 @@ class _DrawArea extends State<DrawArea> {
   List<Offset> _points = <Offset>[];
   double brushSize = 10.0;
   Color brushColor = Colors.black;
+  Color fillColor = Colors.black;
   List<CanvasPainter> brushList = [];
+  bool isFill = false;
 
   void trackPath(DragUpdateDetails details) {
     setState(() {
@@ -23,12 +25,32 @@ class _DrawArea extends State<DrawArea> {
     });
   }
 
+  checkAndFillColor () {
+    if (isFill) {
+      setState(() {
+        isFill = false;
+        fillColor = Colors.black;
+      });
+    }
+  }
+
   setColor(Color color) {
     setState(() {
       List<Offset> oldPoints = List.from(_points);
       brushList.add(CanvasPainter(
           points: oldPoints, brushSize: brushSize, brushColor: brushColor));
       brushColor = color;
+      _points.clear();
+    });
+  }
+
+  setFillColor(Color color) {
+    setState(() {
+      List<Offset> oldPoints = List.from(_points);
+      brushList.add(CanvasPainter(
+          points: oldPoints, brushSize: brushSize, brushColor: brushColor));
+      fillColor = color;
+      isFill = true;
       _points.clear();
     });
   }
@@ -105,13 +127,14 @@ class _DrawArea extends State<DrawArea> {
                     icon: Icon(
                       Icons.format_color_fill,
                       size: 30,
+                      color: fillColor
                     ),
                     onPressed: () {
                       unFocusTextField();
                       showDialog(
                           context: context,
                           builder: (_) {
-                            return ColorPicker(context, setColor);
+                            return ColorPicker(context, setFillColor);
                           });
                     },
                   ),
@@ -126,6 +149,13 @@ class _DrawArea extends State<DrawArea> {
                   width: constraints.widthConstraints().maxWidth,
                   height: constraints.heightConstraints().maxHeight,
                   child: GestureDetector(
+                      onTap: () {
+                        FocusScopeNode currentFocus = FocusScope.of(context);
+                        if (!currentFocus.hasPrimaryFocus) {
+                          currentFocus.unfocus();
+                        }
+                        checkAndFillColor();
+                      },
                       onPanUpdate: trackPath,
                       onPanEnd: (DragEndDetails details) => _points.add(null),
                       child: ClipRect(
