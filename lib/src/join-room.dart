@@ -1,5 +1,7 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:my_app/src/canvas-page.dart';
+import 'package:my_app/globals.dart' as globals;
 import 'container-template.dart';
 import 'buttons.dart';
 import 'canvas-page.dart';
@@ -15,6 +17,7 @@ class _JoinRoomState extends State<JoinRoom> {
 
   final nameController = TextEditingController();
   final codeController = TextEditingController();
+  final collectionRef = FirebaseFirestore.instance.collection('rooms');
 
   @override
   void dispose() {
@@ -22,6 +25,56 @@ class _JoinRoomState extends State<JoinRoom> {
     nameController.dispose();
     codeController.dispose();
     super.dispose();
+  }
+
+  unFocusTextField (BuildContext context) {
+    FocusScopeNode currentFocus = FocusScope.of(context);
+    if (!currentFocus.hasPrimaryFocus) {
+      currentFocus.unfocus();
+    }
+  }
+
+  joinRoom (BuildContext context) {
+    if (nameController.text == "") {
+      unFocusTextField(context);
+      Scaffold.of(context).showSnackBar(SnackBar(
+      backgroundColor: Colors.blueAccent,
+      elevation: 10.0,
+      content: Text(
+      "Please enter a name",
+      style: TextStyle(color: Colors.white),
+      ),
+      ));
+    } else if (codeController.text == "") {
+      unFocusTextField(context);
+      Scaffold.of(context).showSnackBar(SnackBar(
+      backgroundColor: Colors.blueAccent,
+      elevation: 10.0,
+      content: Text(
+      "Please enter a room code",
+      style: TextStyle(color: Colors.white),
+      ),
+      ));
+    } else {
+      collectionRef.doc(codeController.text).update(
+          {'participants': FieldValue.arrayUnion([nameController.text])}).then((value) =>
+            {
+              globals.name = nameController.text,
+              globals.roomcode = codeController.text,
+              Navigator.of(context).push(_createRoute(CanvasPage()))
+            }).catchError((onError) =>
+            {
+              unFocusTextField(context),
+              Scaffold.of(context).showSnackBar(SnackBar(
+                backgroundColor: Colors.blueAccent,
+                elevation: 10.0,
+                content: Text(
+                  "Wrong room code entered",
+                  style: TextStyle(color: Colors.white),
+                ),
+              ))
+            });
+    }
   }
 
   Route _createRoute(dynamic className) {
@@ -43,7 +96,7 @@ class _JoinRoomState extends State<JoinRoom> {
 
   @override
   Widget build(BuildContext context) {
-    return ContainerWidget(Column(
+    return Scaffold(body: ContainerWidget(Column(
       children: [
         Material(
             color: Colors.white,
@@ -81,12 +134,14 @@ class _JoinRoomState extends State<JoinRoom> {
           )
         ),
         SizedBox(height: 20,),
-        HomeButton("JOIN", (() => {
-          Navigator.of(context).push(_createRoute(CanvasPage()))
-        }))
+        Builder(builder: (BuildContext context) {
+          return HomeButton("JOIN", (() => {
+            joinRoom(context)
+          }));
+        })
       ],
       crossAxisAlignment: CrossAxisAlignment.center,
       mainAxisAlignment: MainAxisAlignment.center,
-    ));
+    )));
   }
 }

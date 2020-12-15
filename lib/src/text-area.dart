@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:my_app/globals.dart' as globals;
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class TextArea extends StatefulWidget {
 
@@ -12,18 +14,32 @@ class TextArea extends StatefulWidget {
 class _TextArea extends State<TextArea> {
 
   final msgcontroller = TextEditingController();
-  List<String> messages = [];
+  final collectionRef = FirebaseFirestore.instance.collection('rooms');
+  List<dynamic> messages = [];
+
+  @override
+  void initState() {
+    collectionRef.doc(globals.roomcode).get().then((docs) => {
+      setState(() {
+        messages = docs.get('messages');
+      })
+    });
+    super.initState();
+  }
 
   @override
   void dispose() {
     // Clean up the controller when the widget is disposed.
+    collectionRef.doc(globals.roomcode).update({'participants': FieldValue.arrayRemove([globals.name])}).then((value) => {
+      globals.roomcode = ""
+    });
     msgcontroller.dispose();
     super.dispose();
   }
 
-  sendMessage() {
+  sendMessage() async {
     setState(() {
-      messages.insert(0, msgcontroller.text);
+      messages.insert(0, {'name': globals.name, 'text': msgcontroller.text});
       msgcontroller.text = "";
     });
   }
@@ -115,7 +131,7 @@ class _TextArea extends State<TextArea> {
                               bottom: BorderSide(width: 0.6, color: Colors.grey)
                             )
                           ),
-                          child: Text(messages[index],
+                          child: Text(messages[index]['name'] + ": " + messages[index]['text'],
                             style: TextStyle(fontWeight: FontWeight.bold),
                           ),
                         );

@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:my_app/globals.dart' as globals;
 import 'container-template.dart';
 import 'draw-area.dart';
 import 'text-area.dart';
 
 class CanvasPage extends StatelessWidget {
-  final String roomCode = "HELLOW";
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
         body: ContainerWidget(Column(
       mainAxisSize: MainAxisSize.max,
-      children: [RoomCode(roomCode), DrawArea(), TextArea()],
+      children: [RoomCode(globals.roomcode), DrawArea(), TextArea()],
     )));
   }
 }

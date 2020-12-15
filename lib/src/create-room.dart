@@ -16,6 +16,7 @@ class CreateRoom extends StatefulWidget {
 class _CreateRoomState extends State<CreateRoom> {
   
   final nameController = TextEditingController();
+  final collectionRef = FirebaseFirestore.instance.collection('rooms');
 
   @override
   void dispose() {
@@ -54,22 +55,31 @@ class _CreateRoomState extends State<CreateRoom> {
     return List.generate(len, (index) => _chars[r.nextInt(_chars.length)]).join();
   }
 
-  createFirebaseDocument() {
-    List<String> documentList = [];
-    FirebaseFirestore.instance.collection('rooms').get().then((documents) => {
-      for (QueryDocumentSnapshot doc in documents.docs) {
-        print(doc.id),
-        documentList.add(doc.id)
-      }
+  addDocumentToDatabase (String roomcode, BuildContext context) {
+    collectionRef.doc(roomcode).set({'participants': [globals.name], 'messages': []}).then((value) => {
+      globals.roomcode = roomcode,
+      Navigator.of(context).push(_createRoute(CanvasPage()))
+    }).catchError((onError) => {
+      print("Error adding document")
     });
+  }
+
+  createFirebaseDocument(BuildContext context) async {
+    List<String> documentList = [];
+    String roomcode = "";
+    QuerySnapshot documents = await collectionRef.get();
+    for (QueryDocumentSnapshot doc in documents.docs) {
+      documentList.add(doc.id);
+    }
+    while (roomcode == "" || documentList.contains(roomcode)) {
+      roomcode = generateRandomString(6);
+    }
+    addDocumentToDatabase(roomcode, context);
   }
 
   createNewRoom(BuildContext context) {
     if (nameController.text == "") {
       unFocusTextField(context);
-
-
-
       Scaffold.of(context).showSnackBar(SnackBar(
         backgroundColor: Colors.blueAccent,
         elevation: 10.0,
@@ -80,10 +90,7 @@ class _CreateRoomState extends State<CreateRoom> {
       ));
     } else {
       globals.name = nameController.text;
-      print(globals.name);
-      Navigator.of(context).push(_createRoute(CanvasPage()));
-      createFirebaseDocument();
-      //FirebaseFirestore.instance.collection('rooms').doc('room3').set({'participants': [], 'ID': 'room3'}),
+      createFirebaseDocument(context);
     }
   }
   
