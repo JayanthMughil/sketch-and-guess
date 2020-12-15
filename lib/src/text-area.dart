@@ -30,8 +30,15 @@ class _TextArea extends State<TextArea> {
   @override
   void dispose() {
     // Clean up the controller when the widget is disposed.
+    String tempRoomCode;
     collectionRef.doc(globals.roomcode).update({'participants': FieldValue.arrayRemove([globals.name])}).then((value) => {
-      globals.roomcode = ""
+      tempRoomCode = globals.roomcode,
+      globals.roomcode = "",
+      collectionRef.doc(tempRoomCode).get().then((docs) => {
+        if(docs.get('participants').length == 0) {
+          collectionRef.doc(tempRoomCode).delete()
+        }
+      })
     });
     msgcontroller.dispose();
     super.dispose();
