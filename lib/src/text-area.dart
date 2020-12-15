@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:my_app/globals.dart' as globals;
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -15,11 +17,21 @@ class _TextArea extends State<TextArea> {
 
   final msgcontroller = TextEditingController();
   final collectionRef = FirebaseFirestore.instance.collection('rooms');
+  final docRef = FirebaseFirestore.instance.collection('rooms').doc(globals.roomcode);
+  StreamSubscription<DocumentSnapshot> streamListening;
   List<dynamic> messages = [];
 
   @override
   void initState() {
-    collectionRef.doc(globals.roomcode).get().then((docs) => {
+    streamListening = docRef.snapshots().listen((event) {
+      var msgLength = event.get('messages').length;
+      if (msgLength > 0) {
+        setState(() {
+          messages.insert(0, event.get('messages')[msgLength - 1]);
+        });
+      }
+    });
+    docRef.get().then((docs) => {
       setState(() {
         messages = docs.get('messages');
       })
@@ -31,7 +43,8 @@ class _TextArea extends State<TextArea> {
   void dispose() {
     // Clean up the controller when the widget is disposed.
     String tempRoomCode;
-    collectionRef.doc(globals.roomcode).update({'participants': FieldValue.arrayRemove([globals.name])}).then((value) => {
+    streamListening.cancel();
+    docRef.update({'participants': FieldValue.arrayRemove([globals.name])}).then((value) => {
       tempRoomCode = globals.roomcode,
       globals.roomcode = "",
       collectionRef.doc(tempRoomCode).get().then((docs) => {
@@ -45,9 +58,10 @@ class _TextArea extends State<TextArea> {
   }
 
   sendMessage() async {
-    setState(() {
-      messages.insert(0, {'name': globals.name, 'text': msgcontroller.text});
-      msgcontroller.text = "";
+    docRef.update({'messages': FieldValue.arrayUnion([{'name': globals.name, 'text': msgcontroller.text}])}).then((value) => {
+      setState(() {
+        msgcontroller.text = "";
+      })
     });
   }
 
