@@ -16,6 +16,7 @@ class DrawArea extends StatefulWidget {
 
 class _DrawArea extends State<DrawArea> {
   final docRef = FirebaseFirestore.instance.collection('rooms').doc(globals.roomcode);
+  DocumentReference currentPaintBrush;
   List<Offset> _points = <Offset>[];
   double brushSize = 10.0;
   Color brushColor = Colors.black;
@@ -26,64 +27,39 @@ class _DrawArea extends State<DrawArea> {
   BuildContext drawBoxContext;
 
   @override
+  void dispose() {
+
+    super.dispose();
+  }
+
+  @override
   void initState() {
-    /*streamListening = docRef.snapshots().listen((event) {
-      var brushListLength = event.get('paintBrushes').length;
-      if (brushListLength > 0) {
-        setState(() {
-          brushList.add(event.get('paintBrushes')[brushListLength - 1]);
-        });
-      }
-    });*/
-    docRef.get().then((docs) => {
-      setState(() {
-        var brushes = docs.get('paintBrushes');
-        for (dynamic brush in brushes) {
-          List<Offset> pts = [];
-          for (dynamic point in brush['points']) {
-            if (point['x'] != null && point['y'] != null) {
-              pts.add(Offset(point['x'], point['y']));
-            } else {
-              pts.add(null);
-            }
-          }
-          brushList.add(CanvasPainter(
-              points: pts, brushSize: brush['brushSize'], brushColor: Color(brush['brushColor'])));
-        }
-      })
-    });
+    currentPaintBrush = docRef.collection('paintBrushes').doc();
+    currentPaintBrush.set({'points': [], 'brushColor': brushColor.value, 'brushSize': brushSize});
     super.initState();
   }
 
   void trackPath(DragUpdateDetails details) {
-    setState(() {
       RenderBox box = drawBoxContext.findRenderObject();
       Offset localPosition = box.globalToLocal(details.globalPosition);
-      _points = List.from(_points)..add(localPosition);
-    });
+      setState(() {
+        _points = List.from(_points)..add(localPosition);
+      });
+      currentPaintBrush.update({'points': FieldValue.arrayUnion([{'x': localPosition.dx, 'y': localPosition.dy}])});
   }
 
   addToBrushList(DragEndDetails details) {
-    setState(() {
-      _points.add(null);
-      List<Offset> oldPoints = List.from(_points);
-      List<dynamic> pointsFirestore = [];
-      for (Offset point in oldPoints) {
-        if (point != null) {
-          pointsFirestore.add({'x': point.dx, 'y': point.dy});
-        } else {
-          pointsFirestore.add({'x': null, 'y': null});
-        }
-      }
-      docRef.update({'paintBrushes': FieldValue.arrayUnion([
-        {'points': pointsFirestore, 'brushSize': brushSize, 'brushColor': brushColor.value}
-      ])}).catchError((onError) => {
-         print(onError.toString())
+      setState(() {
+        _points.add(null);
+        List<Offset> oldPoints = List.from(_points);
+        currentPaintBrush.update({'points': FieldValue.arrayUnion([{'x': null, 'y': null}])}).then((value) => {
+          currentPaintBrush = docRef.collection('paintBrushes').doc(),
+          currentPaintBrush.set({'points': [], 'brushColor': brushColor.value, 'brushSize': brushSize})
+        });
+        brushList.add(CanvasPainter(
+            points: oldPoints, brushSize: brushSize, brushColor: brushColor));
+        _points.clear();
       });
-      brushList.add(CanvasPainter(
-          points: oldPoints, brushSize: brushSize, brushColor: brushColor));
-      _points.clear();
-    });
   }
 
   checkAndFillColor () {
@@ -96,33 +72,25 @@ class _DrawArea extends State<DrawArea> {
   }
 
   setColor(Color color) {
-    setState(() {
-      //List<Offset> oldPoints = List.from(_points);
-      //brushList.add(CanvasPainter(
-      //    points: oldPoints, brushSize: brushSize, brushColor: brushColor));
-      brushColor = color;
-      //_points.clear();
+    currentPaintBrush.update({'brushColor': color.value}).then((value) => {
+      setState(() {
+        brushColor = color;
+      })
     });
   }
 
   setFillColor(Color color) {
     setState(() {
-      //List<Offset> oldPoints = List.from(_points);
-      //brushList.add(CanvasPainter(
-      //    points: oldPoints, brushSize: brushSize, brushColor: brushColor));
       fillColor = color;
       isFill = true;
-      //_points.clear();
     });
   }
 
   setSize(double size) {
-    setState(() {
-      //List<Offset> oldPoints = List.from(_points);
-      //brushList.add(CanvasPainter(
-      //    points: oldPoints, brushSize: brushSize, brushColor: brushColor));
-      brushSize = size;
-      //_points.clear();
+    currentPaintBrush.update({'brushSize': size}).then((value) => {
+      setState(() {
+        brushSize = size;
+      })
     });
   }
 
@@ -232,11 +200,9 @@ class _DrawArea extends State<DrawArea> {
                 floatingActionButton: FloatingActionButton(
                   onPressed: () {
                     unFocusTextField();
-                      docRef.update({'paintBrushes': []}).then((value) => {
-                        setState(() {
-                          _points = [];
-                          brushList = [];
-                        })
+                      setState(() {
+                        _points = [];
+                        brushList = [];
                       });
                   },
                   child: Icon(Icons.delete_sweep),
@@ -265,6 +231,7 @@ class CanvasPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+
     for (CanvasPainter painter in brushList) {
       painter.paint(canvas, size);
     }
@@ -273,8 +240,6 @@ class CanvasPainter extends CustomPainter {
       ..color = brushColor
       ..strokeCap = StrokeCap.round
       ..strokeWidth = brushSize;
-
-    print(points.length != 0 ? points[0] : "");
 
     for (int i = 0; i < points.length - 1; i++) {
       if (points[i] != null && points[i + 1] != null) {

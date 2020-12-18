@@ -56,7 +56,7 @@ class _CreateRoomState extends State<CreateRoom> {
   }
 
   addDocumentToDatabase (String roomcode, BuildContext context) {
-    collectionRef.doc(roomcode).set({'participants': [globals.name], 'messages': [], 'paintBrushes': []}).then((value) => {
+    collectionRef.doc(roomcode).set({'participants': [globals.name], 'messages': []}).then((value) => {
       globals.roomcode = roomcode,
       Navigator.of(context).push(_createRoute(CanvasPage()))
     }).catchError((onError) => {
