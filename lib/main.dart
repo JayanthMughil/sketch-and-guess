@@ -1,3 +1,4 @@
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -26,6 +27,7 @@ class SketchAndGuess extends StatelessWidget {
           // Once complete, show your application
           if (snapshot.connectionState == ConnectionState.done) {
             final Future<UserCredential> _userCred = FirebaseAuth.instance.signInAnonymously();
+            FirebaseFunctions functions = FirebaseFunctions.instance;
             return MyApp();
           }
 

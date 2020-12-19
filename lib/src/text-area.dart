@@ -24,7 +24,7 @@ class _TextArea extends State<TextArea> {
   @override
   void initState() {
     streamListening = docRef.snapshots().listen((event) {
-      var msgLength = event.get('messages').length;
+      var msgLength = event.exists ? event.get('messages').length : 0;
       if (msgLength > 0) {
         setState(() {
           messages.insert(0, event.get('messages')[msgLength - 1]);

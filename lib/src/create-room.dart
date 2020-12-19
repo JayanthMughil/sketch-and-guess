@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'canvas-page.dart';
@@ -49,32 +50,15 @@ class _CreateRoomState extends State<CreateRoom> {
     }
   }
 
-  String generateRandomString(int len) {
-    var r = Random();
-    const _chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    return List.generate(len, (index) => _chars[r.nextInt(_chars.length)]).join();
-  }
-
-  addDocumentToDatabase (String roomcode, BuildContext context) {
-    collectionRef.doc(roomcode).set({'participants': [globals.name], 'messages': []}).then((value) => {
-      globals.roomcode = roomcode,
+  createFirebaseDocument(BuildContext context) async {
+    // FirebaseFunctions.instance.useFunctionsEmulator(origin: 'http://localhost:5001');
+    HttpsCallable createRoom = FirebaseFunctions.instance.httpsCallable('createRoom');
+    createRoom({'name': globals.name}).then((code) => {
+      globals.roomcode = code.data,
       Navigator.of(context).push(_createRoute(CanvasPage()))
     }).catchError((onError) => {
-      print("Error adding document")
+      print(onError.toString())
     });
-  }
-
-  createFirebaseDocument(BuildContext context) async {
-    List<String> documentList = [];
-    String roomcode = "";
-    QuerySnapshot documents = await collectionRef.get();
-    for (QueryDocumentSnapshot doc in documents.docs) {
-      documentList.add(doc.id);
-    }
-    while (roomcode == "" || documentList.contains(roomcode)) {
-      roomcode = generateRandomString(6);
-    }
-    addDocumentToDatabase(roomcode, context);
   }
 
   createNewRoom(BuildContext context) {
