@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:collection';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 import 'color-picker.dart';
 import 'brush-size-menu.dart';
@@ -17,6 +18,7 @@ class DrawArea extends StatefulWidget {
 class _DrawArea extends State<DrawArea> {
   final docRef = FirebaseFirestore.instance.collection('rooms').doc(globals.roomcode);
   DocumentReference currentPaintBrush;
+  String prevBrush = "";
   List<Offset> _points = <Offset>[];
   double brushSize = 10.0;
   Color brushColor = Colors.black;
@@ -24,11 +26,12 @@ class _DrawArea extends State<DrawArea> {
   List<CanvasPainter> brushList = [];
   bool isFill = false;
   StreamSubscription<DocumentSnapshot> streamListening;
+  StreamSubscription<DocumentSnapshot> pointListening;
   BuildContext drawBoxContext;
 
   @override
   void dispose() {
-
+    streamListening.cancel();
     super.dispose();
   }
 
@@ -36,7 +39,57 @@ class _DrawArea extends State<DrawArea> {
   void initState() {
     currentPaintBrush = docRef.collection('paintBrushes').doc();
     currentPaintBrush.set({'points': [], 'brushColor': brushColor.value, 'brushSize': brushSize});
+    docRef.update({'currentBrush': currentPaintBrush.id});
+    initializeListeners();
     super.initState();
+  }
+
+  void initializeListeners () {
+    streamListening = docRef.snapshots().listen((event) {
+      String cb = event.exists ? event.get('currentBrush') : "";
+
+      if (cb != prevBrush) {
+        if (prevBrush != "") {
+          setState(() {
+            List<Offset> oldPoints = List.from(_points);
+            brushList.add(CanvasPainter(
+                points: oldPoints, brushSize: brushSize, brushColor: brushColor));
+            _points.clear();
+          });
+          pointListening.cancel();
+        }
+        prevBrush = cb;
+        pointListening = docRef.collection('paintBrushes').doc(cb).snapshots().listen((event) {
+          if (event.exists) {
+            if (event.get('points').length > 0) {
+              int length = event.get('points').length;
+              Offset pt;
+              var singlept = event.get('points')[length-1];
+              if (singlept['x'] != null && singlept['y'] != null) {
+                pt = Offset(singlept['x'], singlept['y']);
+              } else {
+                print("its null");
+                pt = null;
+              }
+              setState(() {
+                _points = List.from(_points)..add(pt);
+              });
+              if (event.get('brushColor') != brushColor.value) {
+                setState(() {
+                  brushColor = Color(event.get(brushColor));
+                });
+              }
+              if (event.get('brushSize') != brushSize) {
+                setState(() {
+                  brushSize = event.get('brushSize');
+                });
+              }
+            }
+          }
+        });
+      }
+
+    });
   }
 
   void trackPath(DragUpdateDetails details) {
@@ -54,7 +107,8 @@ class _DrawArea extends State<DrawArea> {
         List<Offset> oldPoints = List.from(_points);
         currentPaintBrush.update({'points': FieldValue.arrayUnion([{'x': null, 'y': null}])}).then((value) => {
           currentPaintBrush = docRef.collection('paintBrushes').doc(),
-          currentPaintBrush.set({'points': [], 'brushColor': brushColor.value, 'brushSize': brushSize})
+          currentPaintBrush.set({'points': [], 'brushColor': brushColor.value, 'brushSize': brushSize}),
+          docRef.update({'currentBrush': currentPaintBrush.id})
         });
         brushList.add(CanvasPainter(
             points: oldPoints, brushSize: brushSize, brushColor: brushColor));
@@ -99,6 +153,22 @@ class _DrawArea extends State<DrawArea> {
     if (!currentFocus.hasPrimaryFocus) {
       currentFocus.unfocus();
     }
+  }
+
+  clearCanvas () {
+    unFocusTextField();
+    HttpsCallable clearBrush = FirebaseFunctions.instance.httpsCallable('clearBrushes');
+    currentPaintBrush = docRef.collection('paintBrushes').doc();
+    docRef.update({'currentBrush': currentPaintBrush.id});
+    clearBrush({'roomcode': globals.roomcode}).then((value) => {
+    currentPaintBrush.set({'points': [], 'brushColor': brushColor.value, 'brushSize': brushSize}),
+        setState(() {
+          _points = [];
+          brushList = [];
+        })
+    }).catchError((onError) => {
+      print(onError.toString())
+    });
   }
 
   @override
@@ -198,13 +268,7 @@ class _DrawArea extends State<DrawArea> {
                       ))),
                 )),
                 floatingActionButton: FloatingActionButton(
-                  onPressed: () {
-                    unFocusTextField();
-                      setState(() {
-                        _points = [];
-                        brushList = [];
-                      });
-                  },
+                  onPressed: clearCanvas,
                   child: Icon(Icons.delete_sweep),
                   backgroundColor: Colors.green,
                 ),

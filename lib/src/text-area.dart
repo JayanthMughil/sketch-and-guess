@@ -46,12 +46,7 @@ class _TextArea extends State<TextArea> {
     streamListening.cancel();
     docRef.update({'participants': FieldValue.arrayRemove([globals.name])}).then((value) => {
       tempRoomCode = globals.roomcode,
-      globals.roomcode = "",
-      collectionRef.doc(tempRoomCode).get().then((docs) => {
-        if(docs.get('participants').length == 0) {
-          collectionRef.doc(tempRoomCode).delete()
-        }
-      })
+      globals.roomcode = ""
     });
     msgcontroller.dispose();
     super.dispose();
