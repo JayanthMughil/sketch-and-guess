@@ -38,7 +38,7 @@ class _DrawArea extends State<DrawArea> {
   @override
   void initState() {
     currentPaintBrush = docRef.collection('paintBrushes').doc();
-    currentPaintBrush.set({'points': [], 'brushColor': brushColor.value, 'brushSize': brushSize});
+    currentPaintBrush.set({'points': [], 'brushColor': brushColor.value, 'brushSize': brushSize, 'brushOwner': globals.name});
     docRef.update({'currentBrush': currentPaintBrush.id});
     initializeListeners();
     super.initState();
@@ -60,7 +60,7 @@ class _DrawArea extends State<DrawArea> {
         }
         prevBrush = cb;
         pointListening = docRef.collection('paintBrushes').doc(cb).snapshots().listen((event) {
-          if (event.exists) {
+          if (event.exists && event.get('brushOwner') != globals.name) {
             if (event.get('points').length > 0) {
               int length = event.get('points').length;
               Offset pt;
@@ -98,21 +98,25 @@ class _DrawArea extends State<DrawArea> {
       setState(() {
         _points = List.from(_points)..add(localPosition);
       });
-      currentPaintBrush.update({'points': FieldValue.arrayUnion([{'x': localPosition.dx, 'y': localPosition.dy}])});
+      // firebase update
+      currentPaintBrush.update({'points': FieldValue.arrayUnion([{'x': localPosition.dx, 'y': localPosition.dy}])}).catchError((onError) => {
+        print(onError.toString())
+      });
   }
 
   addToBrushList(DragEndDetails details) {
       setState(() {
         _points.add(null);
         List<Offset> oldPoints = List.from(_points);
-        currentPaintBrush.update({'points': FieldValue.arrayUnion([{'x': null, 'y': null}])}).then((value) => {
-          currentPaintBrush = docRef.collection('paintBrushes').doc(),
-          currentPaintBrush.set({'points': [], 'brushColor': brushColor.value, 'brushSize': brushSize}),
-          docRef.update({'currentBrush': currentPaintBrush.id})
-        });
         brushList.add(CanvasPainter(
             points: oldPoints, brushSize: brushSize, brushColor: brushColor));
         _points.clear();
+        // firebase update
+        currentPaintBrush.update({'points': FieldValue.arrayUnion([{'x': null, 'y': null}])}).then((value) => {
+          currentPaintBrush = docRef.collection('paintBrushes').doc(),
+          currentPaintBrush.set({'points': [], 'brushColor': brushColor.value, 'brushSize': brushSize, 'brushOwner': globals.name}),
+          docRef.update({'currentBrush': currentPaintBrush.id})
+        });
       });
   }
 
@@ -126,10 +130,12 @@ class _DrawArea extends State<DrawArea> {
   }
 
   setColor(Color color) {
-    currentPaintBrush.update({'brushColor': color.value}).then((value) => {
-      setState(() {
-        brushColor = color;
-      })
+    setState(() {
+      brushColor = color;
+    });
+    // firebase update
+    currentPaintBrush.update({'brushColor': color.value}).catchError((onError) => {
+      print(onError.toString())
     });
   }
 
@@ -141,10 +147,12 @@ class _DrawArea extends State<DrawArea> {
   }
 
   setSize(double size) {
-    currentPaintBrush.update({'brushSize': size}).then((value) => {
-      setState(() {
-        brushSize = size;
-      })
+    setState(() {
+      brushSize = size;
+    });
+    // firebase update
+    currentPaintBrush.update({'brushSize': size}).catchError((onError) => {
+      print(onError.toString())
     });
   }
 
@@ -161,11 +169,11 @@ class _DrawArea extends State<DrawArea> {
     currentPaintBrush = docRef.collection('paintBrushes').doc();
     docRef.update({'currentBrush': currentPaintBrush.id});
     clearBrush({'roomcode': globals.roomcode}).then((value) => {
-    currentPaintBrush.set({'points': [], 'brushColor': brushColor.value, 'brushSize': brushSize}),
-        setState(() {
-          _points = [];
-          brushList = [];
-        })
+      currentPaintBrush.set({'points': [], 'brushColor': brushColor.value, 'brushSize': brushSize, 'brushOwner': globals.name}),
+      setState(() {
+        _points = [];
+        brushList = [];
+      })
     }).catchError((onError) => {
       print(onError.toString())
     });
