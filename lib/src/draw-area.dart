@@ -1,8 +1,6 @@
 import 'dart:async';
-import 'dart:collection';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 import 'color-picker.dart';
 import 'brush-size-menu.dart';
@@ -17,16 +15,14 @@ class DrawArea extends StatefulWidget {
 
 class _DrawArea extends State<DrawArea> {
   final docRef = FirebaseFirestore.instance.collection('rooms').doc(globals.roomcode);
-  DocumentReference currentPaintBrush;
-  String prevBrush = "";
   List<Offset> _points = <Offset>[];
+  List<dynamic> firebasePoints = [];
   double brushSize = 10.0;
   Color brushColor = Colors.black;
   Color fillColor = Colors.black;
   List<CanvasPainter> brushList = [];
   bool isFill = false;
   StreamSubscription<DocumentSnapshot> streamListening;
-  StreamSubscription<DocumentSnapshot> pointListening;
   BuildContext drawBoxContext;
 
   @override
@@ -37,58 +33,62 @@ class _DrawArea extends State<DrawArea> {
 
   @override
   void initState() {
-    currentPaintBrush = docRef.collection('paintBrushes').doc();
-    currentPaintBrush.set({'points': [], 'brushColor': brushColor.value, 'brushSize': brushSize, 'brushOwner': globals.name});
-    docRef.update({'currentBrush': currentPaintBrush.id});
     initializeListeners();
     super.initState();
   }
 
   void initializeListeners () {
     streamListening = docRef.snapshots().listen((event) {
-      String cb = event.exists ? event.get('currentBrush') : "";
+      if (event.get('currentPainter') != globals.name) {
+        int brushLength = event.exists ? event
+            .get('paintBrushes')
+            .length : 0;
+        int pointLength = event.exists ? event
+            .get('points')
+            .length : 0;
 
-      if (cb != prevBrush) {
-        if (prevBrush != "") {
+        // clear canvas update
+        if (brushLength == 0 && pointLength == 0) {
           setState(() {
-            List<Offset> oldPoints = List.from(_points);
-            brushList.add(CanvasPainter(
-                points: oldPoints, brushSize: brushSize, brushColor: brushColor));
-            _points.clear();
+            brushList = [];
+            _points = [];
           });
-          pointListening.cancel();
         }
-        prevBrush = cb;
-        pointListening = docRef.collection('paintBrushes').doc(cb).snapshots().listen((event) {
-          if (event.exists && event.get('brushOwner') != globals.name) {
-            if (event.get('points').length > 0) {
-              int length = event.get('points').length;
-              Offset pt;
-              var singlept = event.get('points')[length-1];
-              if (singlept['x'] != null && singlept['y'] != null) {
-                pt = Offset(singlept['x'], singlept['y']);
-              } else {
-                print("its null");
-                pt = null;
-              }
-              setState(() {
-                _points = List.from(_points)..add(pt);
-              });
-              if (event.get('brushColor') != brushColor.value) {
-                setState(() {
-                  brushColor = Color(event.get(brushColor));
-                });
-              }
-              if (event.get('brushSize') != brushSize) {
-                setState(() {
-                  brushSize = event.get('brushSize');
-                });
-              }
-            }
-          }
-        });
-      }
 
+        // points update
+        List<Offset> firePoints = [];
+        for (dynamic point in event.get('points')) {
+          if (point == null) {
+            firePoints.add(null);
+            setState(() {
+              _points.add(null);
+              List<Offset> oldPoints = List.from(firePoints);
+              brushList.add(CanvasPainter(
+                  points: oldPoints, brushSize: brushSize, brushColor: brushColor));
+              _points.clear();
+            });
+          } else {
+            firePoints.add(Offset(point['x'], point['y']));
+            setState(() {
+              _points = List.from(firePoints);
+            });
+          }
+        }
+
+        // color update
+        if (brushColor.value != event.get('brushColor')) {
+          setState(() {
+            brushColor = Color(event.get('brushColor'));
+          });
+        }
+
+        // size update
+        if (brushSize != event.get('brushSize')) {
+          setState(() {
+            brushSize = event.get('brushSize');
+          });
+        }
+      }
     });
   }
 
@@ -99,7 +99,8 @@ class _DrawArea extends State<DrawArea> {
         _points = List.from(_points)..add(localPosition);
       });
       // firebase update
-      currentPaintBrush.update({'points': FieldValue.arrayUnion([{'x': localPosition.dx, 'y': localPosition.dy}])}).catchError((onError) => {
+      firebasePoints = List.from(firebasePoints)..add({'x': localPosition.dx, 'y': localPosition.dy});
+      docRef.update({'points': firebasePoints, 'currentPainter': globals.name}).catchError((onError) => {
         print(onError.toString())
       });
   }
@@ -111,12 +112,16 @@ class _DrawArea extends State<DrawArea> {
         brushList.add(CanvasPainter(
             points: oldPoints, brushSize: brushSize, brushColor: brushColor));
         _points.clear();
-        // firebase update
-        currentPaintBrush.update({'points': FieldValue.arrayUnion([{'x': null, 'y': null}])}).then((value) => {
-          currentPaintBrush = docRef.collection('paintBrushes').doc(),
-          currentPaintBrush.set({'points': [], 'brushColor': brushColor.value, 'brushSize': brushSize, 'brushOwner': globals.name}),
-          docRef.update({'currentBrush': currentPaintBrush.id})
-        });
+      });
+      // firebase update
+      firebasePoints.add(null);
+      List<dynamic> oldFirePoints = List.from(firebasePoints);
+      firebasePoints.clear();
+      docRef.update({'points': oldFirePoints}).catchError((onError) => {
+        print(onError.toString())
+      });
+      docRef.update({'points': [], 'paintBrushes': FieldValue.arrayUnion([{'points': oldFirePoints, 'brushColor': brushColor.value, 'brushSize': brushSize}])}).catchError((onError) => {
+        print(onError.toString())
       });
   }
 
@@ -134,7 +139,7 @@ class _DrawArea extends State<DrawArea> {
       brushColor = color;
     });
     // firebase update
-    currentPaintBrush.update({'brushColor': color.value}).catchError((onError) => {
+    docRef.update({'brushColor': color.value}).catchError((onError) => {
       print(onError.toString())
     });
   }
@@ -151,7 +156,7 @@ class _DrawArea extends State<DrawArea> {
       brushSize = size;
     });
     // firebase update
-    currentPaintBrush.update({'brushSize': size}).catchError((onError) => {
+    docRef.update({'brushSize': size}).catchError((onError) => {
       print(onError.toString())
     });
   }
@@ -165,16 +170,12 @@ class _DrawArea extends State<DrawArea> {
 
   clearCanvas () {
     unFocusTextField();
-    HttpsCallable clearBrush = FirebaseFunctions.instance.httpsCallable('clearBrushes');
-    currentPaintBrush = docRef.collection('paintBrushes').doc();
-    docRef.update({'currentBrush': currentPaintBrush.id});
-    clearBrush({'roomcode': globals.roomcode}).then((value) => {
-      currentPaintBrush.set({'points': [], 'brushColor': brushColor.value, 'brushSize': brushSize, 'brushOwner': globals.name}),
-      setState(() {
-        _points = [];
-        brushList = [];
-      })
-    }).catchError((onError) => {
+    setState(() {
+      _points = [];
+      brushList = [];
+    });
+    // firebase update
+    docRef.update({'points': [], 'paintBrushes': []}).catchError((onError) => {
       print(onError.toString())
     });
   }

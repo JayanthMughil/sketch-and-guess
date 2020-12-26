@@ -20,21 +20,22 @@ class _TextArea extends State<TextArea> {
   final docRef = FirebaseFirestore.instance.collection('rooms').doc(globals.roomcode);
   StreamSubscription<DocumentSnapshot> streamListening;
   List<dynamic> messages = [];
+  int prevMsgLength = 0;
 
   @override
   void initState() {
     streamListening = docRef.snapshots().listen((event) {
-      var msgLength = event.exists ? event.get('messages').length : 0;
+      int msgLength = event.exists ? event.get('messages').length : 0;
       if (msgLength > 0) {
-        setState(() {
-          messages.insert(0, event.get('messages')[msgLength - 1]);
-        });
+        if (prevMsgLength != msgLength) {
+          prevMsgLength = msgLength;
+          setState(() {
+            messages = List.from(event
+                .get('messages')
+                .reversed);
+          });
+        }
       }
-    });
-    docRef.get().then((docs) => {
-      setState(() {
-        messages = docs.get('messages');
-      })
     });
     super.initState();
   }
