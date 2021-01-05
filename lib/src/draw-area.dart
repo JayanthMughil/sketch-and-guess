@@ -43,12 +43,10 @@ class _DrawArea extends State<DrawArea> {
         int brushLength = event.exists ? event
             .get('paintBrushes')
             .length : 0;
-        int pointLength = event.exists ? event
-            .get('points')
-            .length : 0;
+        var pts = event.exists ? event.get('points') : null;
 
         // clear canvas update
-        if (brushLength == 0 && pointLength == 0) {
+        if (brushLength == 0 && pts == "clear") {
           setState(() {
             brushList = [];
             _points = [];
@@ -56,23 +54,18 @@ class _DrawArea extends State<DrawArea> {
         }
 
         // points update
-        List<Offset> firePoints = [];
-        for (dynamic point in event.get('points')) {
-          if (point == null) {
-            firePoints.add(null);
-            setState(() {
-              _points.add(null);
-              List<Offset> oldPoints = List.from(firePoints);
-              brushList.add(CanvasPainter(
-                  points: oldPoints, brushSize: brushSize, brushColor: brushColor));
-              _points.clear();
-            });
-          } else {
-            firePoints.add(Offset(point['x'], point['y']));
-            setState(() {
-              _points = List.from(firePoints);
-            });
-          }
+        if (pts != null && pts != "clear") {
+          setState(() {
+            _points = List.from(_points)..add(Offset(pts['x'], pts['y']));
+          });
+        } else if (pts == null) {
+          setState(() {
+            _points.add(null);
+            List<Offset> oldPoints = List.from(_points);
+            brushList.add(CanvasPainter(
+                points: oldPoints, brushSize: brushSize, brushColor: brushColor));
+            _points.clear();
+          });
         }
 
         // color update
@@ -100,7 +93,7 @@ class _DrawArea extends State<DrawArea> {
       });
       // firebase update
       firebasePoints = List.from(firebasePoints)..add({'x': localPosition.dx, 'y': localPosition.dy});
-      docRef.update({'points': firebasePoints, 'currentPainter': globals.name}).catchError((onError) => {
+      docRef.update({'points': {'x': localPosition.dx, 'y': localPosition.dy}, 'currentPainter': globals.name}).catchError((onError) => {
         print(onError.toString())
       });
   }
@@ -117,10 +110,10 @@ class _DrawArea extends State<DrawArea> {
       firebasePoints.add(null);
       List<dynamic> oldFirePoints = List.from(firebasePoints);
       firebasePoints.clear();
-      docRef.update({'points': oldFirePoints}).catchError((onError) => {
+      docRef.update({'points': null}).catchError((onError) => {
         print(onError.toString())
       });
-      docRef.update({'points': [], 'paintBrushes': FieldValue.arrayUnion([{'points': oldFirePoints, 'brushColor': brushColor.value, 'brushSize': brushSize}])}).catchError((onError) => {
+      docRef.update({'points': "clear", 'paintBrushes': FieldValue.arrayUnion([{'points': oldFirePoints, 'brushColor': brushColor.value, 'brushSize': brushSize}])}).catchError((onError) => {
         print(onError.toString())
       });
   }
@@ -175,7 +168,7 @@ class _DrawArea extends State<DrawArea> {
       brushList = [];
     });
     // firebase update
-    docRef.update({'points': [], 'paintBrushes': []}).catchError((onError) => {
+    docRef.update({'points': "clear", 'paintBrushes': []}).catchError((onError) => {
       print(onError.toString())
     });
   }
