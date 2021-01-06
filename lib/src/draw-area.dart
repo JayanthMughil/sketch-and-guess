@@ -54,8 +54,11 @@ class _DrawArea extends State<DrawArea> {
         
         // update start game
         if (!event.get('isStarted')) {
-          handleStartDialog(event.get('leader'));
+          if (!isDialogOpen) {
+            handleStartDialog(event.get('leader'));
+          }
         } else if (isDialogOpen) {
+          print("diff close");
           isDialogOpen = false;
           Navigator.pop(drawBoxContext);
         }
@@ -104,7 +107,9 @@ class _DrawArea extends State<DrawArea> {
 
   startGame (BuildContext context) {
     docRef.update({'isStarted': true}).then((value) => {
+      print("sameclose"),
       if (isDialogOpen) {
+        print("sameclosecomp"),
         Navigator.pop(context),
         isDialogOpen = false
       }
@@ -153,7 +158,7 @@ class _DrawArea extends State<DrawArea> {
     } else {
       showDialog(
           barrierDismissible: false,
-          context: context,
+          context: drawBoxContext,
           builder: (_) {
             return Align(
                 alignment: Alignment.topCenter,
