@@ -22,6 +22,8 @@ class _DrawArea extends State<DrawArea> {
   Color fillColor = Colors.black;
   List<CanvasPainter> brushList = [];
   bool isFill = false;
+  bool isDialogOpen = false;
+  List<dynamic> participants = [];
   StreamSubscription<DocumentSnapshot> streamListening;
   BuildContext drawBoxContext;
 
@@ -43,6 +45,21 @@ class _DrawArea extends State<DrawArea> {
         int brushLength = event.exists ? event
             .get('paintBrushes')
             .length : 0;
+        int participantsLength = event.exists ? event.get('participants').length : 0;
+
+        // update participants
+        if (participantsLength != participants.length) {
+          participants = event.get('participants');
+        }
+        
+        // update start game
+        if (!event.get('isStarted')) {
+          handleStartDialog(event.get('leader'));
+        } else if (isDialogOpen) {
+          isDialogOpen = false;
+          Navigator.pop(drawBoxContext);
+        }
+
         var pts = event.exists ? event.get('points') : null;
 
         // clear canvas update
@@ -83,6 +100,89 @@ class _DrawArea extends State<DrawArea> {
         }
       }
     });
+  }
+
+  startGame (BuildContext context) {
+    docRef.update({'isStarted': true}).then((value) => {
+      if (isDialogOpen) {
+        Navigator.pop(context),
+        isDialogOpen = false
+      }
+    });
+  }
+
+  handleStartDialog (leaderName) {
+    isDialogOpen = true;
+    if (globals.name == leaderName) {
+      showDialog(
+          barrierDismissible: false,
+          context: drawBoxContext,
+          builder: (_) {
+            return Align(
+                alignment: Alignment.topCenter,
+                child: SimpleDialog(
+                  titlePadding: EdgeInsets.only(left: 93, top: 20),
+                  elevation: 7,
+                  children: [
+                    Center(
+                      child: Column(
+                        children: [
+                          SizedBox(
+                            height: 50,
+                          ),
+                          ElevatedButton(
+                              onPressed: () {
+                                startGame(drawBoxContext);
+                              },
+                              child: Text("Start game",
+                                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                              style: ButtonStyle(
+                                  backgroundColor: MaterialStateProperty.all<Color>(Colors.blue),
+                                  elevation: MaterialStateProperty.all<double>(10),
+                                  minimumSize: MaterialStateProperty.all<Size>(Size(140, 40)))),
+                          SizedBox(
+                            height: 50,
+                          ),
+                        ],
+                      )
+                    )
+                  ],
+                )
+            );
+          });
+    } else {
+      showDialog(
+          barrierDismissible: false,
+          context: context,
+          builder: (_) {
+            return Align(
+                alignment: Alignment.topCenter,
+                child: SimpleDialog(
+                  titlePadding: EdgeInsets.only(left: 93, top: 20),
+                  elevation: 7,
+                  children: [
+                    Center(
+                      child: Column(
+                        children: [
+                          SizedBox(
+                            height: 50,
+                          ),
+                          Text("Waiting for leader to start the game", style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
+                          SizedBox(
+                            height: 50,
+                          ),
+                        ],
+                      )
+                    )
+                  ],
+                )
+            );
+          });
+    }
+  }
+
+  trackStart(DragStartDetails details) {
+    unFocusTextField();
   }
 
   void trackPath(DragUpdateDetails details) {
@@ -258,6 +358,7 @@ class _DrawArea extends State<DrawArea> {
                         }
                         checkAndFillColor();
                       },
+                      onPanStart: trackStart,
                       onPanUpdate: trackPath,
                       onPanEnd: addToBrushList,
                       child: ClipRect(
